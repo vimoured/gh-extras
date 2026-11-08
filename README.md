@@ -16,6 +16,7 @@ number, who opened it, title, branch, review state (`draft`, `approved`,
 
 Who opened it is their login, or a readable name for it from a file of
 `name:login` lines (`Mira:mira-dev`, logins in any case), read on each refresh.
+Lines starting with `#` are skipped.
 
 ```vim
 let g:gh_extras_pr_authors = '~/.config/gh-pr-authors.txt'  " the default
@@ -23,15 +24,15 @@ let g:gh_extras_pr_authors = '~/.config/gh-pr-authors.txt'  " the default
 
 | Key | What it does |
 | --- | --- |
-| `<CR>` | `gh pr checkout` the PR and close the list. `:BranchDiff` / `:BranchCommits` in fugitive-extras review it. |
+| `<CR>` | `gh pr checkout` the PR and close the list, saying `Checked out #7 (:BranchDiff, :BranchCommits to review)`: those fugitive-extras commands review it. |
 | `/` | Filter the list as you type (see below). |
 | `t` | Its review threads, as `:Thread` (see below). |
 | `o` | Open the PR in the browser. |
 | `r` | Refresh. The cursor stays on its PR. |
 | `q` | Close (`:q` too). |
 
-`:MergedPRs [count]` is the same list for merged pull requests (not those
-closed unmerged), most recently merged first (default 50, at most 100), to
+`:MergedPRs [count]` is the same list for merged pull requests, most
+recently merged first (default 50, at most 100), to
 look up what was done and why. Its last two columns are the merge commit
 (the squash commit, for a squash merge) and how long ago it was merged.
 `/`, `t`, `o`, `r` and `q` are as in `:PRs`; `<CR>` opens the merge commit in
@@ -78,11 +79,13 @@ read and answer replies to your comments without the GitHub UI. Each thread
 is one line: its file and line (`a.py:18-20`), its state, how many comments it
 has and the start of the last one, so `j`/`k` go from thread to thread. `=`
 opens a thread to its conversation, each comment's author, age and text, and
-closes it again, as fugitive's `=` does a file's diff; opened threads stay
-open on `r`. `pending` marks a comment of a review you haven't submitted,
+closes it again, as fugitive's `=` does a file's diff. Opened threads, and
+`u`, stay as they were on `r` and when the list is opened again. A thread on
+a whole file shows its path without a line (*not yet*: it shows as
+`outdated`). `pending` marks a comment of a review you haven't submitted,
 which only you see. The heading counts the open threads and those that are **your
 turn**: open, with someone else's comment last. Resolved threads are hidden
-until `u`. Doesn't need fugitive-extras.
+until `u`.
 
 `:Threads` is the same list for the threads you're in across the repo's open
 PRs: those with a comment of yours, and every thread on a PR you opened. Each
@@ -90,7 +93,7 @@ PR's threads are under a line with its number, branch and title.
 
 | Key | What it does |
 | --- | --- |
-| `<CR>` | Open the file at the thread's line, in the window above: from the work tree when the PR is the branch checked out, else as of the PR's last commit. An **outdated** thread (its lines changed since) opens the file as of the commit it was made on. Commits must be fetched. |
+| `<CR>` | Open the file at the thread's line (a whole file's thread at its top), in the window above: from the work tree when the PR is the branch checked out, else as of the PR's last commit. An **outdated** thread (its lines changed since) opens the file as of the commit it was made on. Commits must be fetched. |
 | `=` | Open the thread to its conversation, or close it to one line. |
 | `x` | Resolve the thread, or unresolve a resolved one. |
 | `u` | Show or hide resolved threads. |
@@ -108,8 +111,8 @@ a thread's line:
 
 | Command | What it does |
 | --- | --- |
-| `:Reply [text]` | Post `text` as a reply to the thread; prompts unless it is given. Leaving the prompt with `<Esc>` keeps what you typed: `:Reply` or `:ReplyDraft` on the same thread goes on from it. |
-| `:ReplyDraft [text]` | Write the reply in a markdown buffer above the list (`g:gh_extras_reply_height`, default 10), starting with `text` if given, else with what you left at the `:Reply` prompt on that thread. A [vim-draft](https://github.com/roumail/vim-draft) draft: `:w` saves it, closing it (`:wq`, or `:q` after `:w`) posts what was last saved, and an empty one or `:q!` before any `:w` posts nothing. |
+| `:Reply [text]` | Post `text` as a reply to the thread; prompts unless it is given, and an empty reply posts nothing. Leaving the prompt with `<Esc>` keeps what you typed: `:Reply` or `:ReplyDraft` on the same thread goes on from it. |
+| `:ReplyDraft [text]` | Write the reply in a markdown buffer of 10 lines above the list, starting with `text` if given, else with what you left at the `:Reply` prompt on that thread. A [vim-draft](https://github.com/roumail/vim-draft) draft: `:w` saves it, closing it (`:wq`, or `:q` after `:w`) posts what was last saved, and an empty one or `:q!` before any `:w` posts nothing. |
 
 If posting fails, the reply's text is in the unnamed register. While you have
 a pending review on the PR, GitHub adds the reply to it instead, and says so.
@@ -127,13 +130,19 @@ autocmd BufEnter gh-extras://thread* nmap <buffer> <leader>cd <Plug>(gh-extras-r
 
 The first 100 threads of a PR are shown, with the first 100 comments of each;
 `:Threads` looks at the 50 most recently updated open PRs, and the first 50
-comments of a thread. Comments on the PR's conversation, not on a line, aren't
-threads and aren't shown. Defined only when `gh` is installed.
+comments of a thread. Threads are the conversations on the diff's lines and
+files; the PR's own conversation is a key away, in the browser (`o`). Defined
+only when `gh` is installed.
+
+*Not yet* marks a known bug: [vim-suite](https://github.com/vimoured/vim-suite)
+asserts the behaviour described (its `test/known-failures.txt`), and the note
+goes once it's fixed.
 
 ## Install
 
 Its commands need [gh](https://cli.github.com), installed and logged in;
-they're defined when it is. The core is gh-extras and two plugins:
+they're defined when it is. Outside a git work tree, in a repo without a
+remote, or when gh or git fails, they say so and do nothing. The core is gh-extras and two plugins:
 
 - [vim-fugitive](https://github.com/tpope/vim-fugitive): finds the
   repository and runs git.
@@ -143,13 +152,14 @@ they're defined when it is. The core is gh-extras and two plugins:
 ```vim
 Plug 'tpope/vim-fugitive'
 Plug 'roumail/vim-lists'
-Plug 'roumail/gh-extras'
+Plug 'vimoured/gh-extras'
 ```
 
 That gives you `:PRs`, `:MergedPRs`, `:Thread`, `:Threads` and `:Reply`.
 
 Each row below adds a module on top of the core, and **Needs** is the whole
-set of plugins it takes besides the core:
+set of plugins it takes besides the core; without them, the command says
+which it needs:
 
 | Needs | Module | Adds |
 | --- | --- | --- |
@@ -166,15 +176,11 @@ Plug 'roumail/vim-place'
 Plug 'roumail/vim-draft'
 Plug 'roumail/vim-review'
 Plug 'roumail/fugitive-extras'
-Plug 'roumail/gh-extras'
+Plug 'vimoured/gh-extras'
 ```
 
-## Development
+## Tests
 
-The lists are [vim-lists](https://github.com/roumail/vim-lists)': gh-extras
-gives each its items, how they show and its own keys. Tests run headless, with
-a stand-in `gh` (`test/bin/gh`):
-
-```sh
-vim -Nu NONE -i NONE -Es -S test/run.vim   # TEST=<pattern> runs some
-```
+Tested by [vim-suite](https://github.com/vimoured/vim-suite), in
+`test/gh-extras.vim`, with the dotfiles that use it. Every pull request runs
+them.

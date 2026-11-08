@@ -1,8 +1,3 @@
-if exists('g:loaded_gh_extras')
-  finish
-endif
-let g:loaded_gh_extras = 1
-
 if executable('gh')
   " Open PRs (default 20), latest first; <CR> checks one out
   command! -nargs=? PRs call gh_extras#prs#open(<q-args>, 0)

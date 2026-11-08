@@ -331,8 +331,7 @@ function! gh_extras#threads#reply_draft(text) abort
   call roumail_draft#open('gh-extras://reply/' . l:target.thread.pr . '/' . l:target.label,
         \ empty(l:text) ? [] : [l:text],
         \ function('s:post', [bufnr(''), b:gh_extras_worktree, l:id]),
-        \ {'split': 'aboveleft '
-        \     . get(g:, 'gh_extras_reply_height', 10) . 'new',
+        \ {'split': 'aboveleft 10new',
         \  'saved': 'Reply saved: closing posts it',
         \  'empty': 'Reply empty: closing posts nothing'})
   setlocal filetype=markdown
