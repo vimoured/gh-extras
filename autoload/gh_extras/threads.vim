@@ -146,7 +146,7 @@ function! s:rows(threads) abort
       let l:place = s:place(l:t)
       let l:head = l:t.path . (empty(l:place.range) ? '' : ':' . l:place.range) . '  '
             \ . (l:t.isResolved ? 'resolved' : s:waiting(l:t, l:me) ? 'your turn' : 'open')
-            \ . (s:outdated(l:t) ? ', outdated' : '')
+            \ . (l:t.isOutdated ? ', outdated' : '')
       if has_key(b:gh_extras_open, l:t.id)
         let l:lines = [l:head]
         for l:c in l:t.comments.nodes
