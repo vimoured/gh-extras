@@ -76,13 +76,9 @@ function! s:rows(prs) abort
   let l:merged = b:gh_extras_merged
   return map(copy(a:prs), {_, pr -> {'item': pr, 'lines': [s:format(b:gh_extras_widths,
         \ '#' . pr.number, pr._who, pr.title, pr.headRefName,
-        \ l:merged ? s:merge_commit(pr)[:6] : pr.isDraft ? 'draft'
+        \ l:merged ? pr.mergeCommit.oid[:6] : pr.isDraft ? 'draft'
         \ : get(s:states, type(pr.reviewDecision) == v:t_string ? pr.reviewDecision : '', '-'),
         \ gh_extras#age(l:merged ? pr.mergedAt : pr.updatedAt))]}})
-endfunction
-
-function! s:merge_commit(pr) abort
-  return type(a:pr.mergeCommit) == v:t_dict ? a:pr.mergeCommit.oid : ''
 endfunction
 
 " merged: the merged PRs (default 50), else the open ones (default 20)
@@ -126,12 +122,7 @@ function! s:show_commit() abort
   if empty(l:pr)
     return
   endif
-  let l:number = l:pr.number
-  let l:oid = s:merge_commit(l:pr)
-  if empty(l:oid)
-    call gh_extras#error('#' . l:number . ' has no merge commit')
-    return
-  endif
+  let l:oid = l:pr.mergeCommit.oid
   call system('git -C ' . shellescape(b:gh_extras_worktree) . ' cat-file -e ' . l:oid . '^{commit}')
   if v:shell_error
     call gh_extras#error('commit ' . l:oid[:6] . ' is not here; :Git fetch first')
