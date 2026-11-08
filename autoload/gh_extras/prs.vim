@@ -149,7 +149,7 @@ function! s:checkout() abort
   call roumail_lists#close()
   checktime
   echo 'Checked out #' . l:number . ' (:BranchDiff, :BranchCommits to review)'
-  if exists('g:loaded_fugitive_extras')
+  if gh_extras#installed('fugitive_extras')
     call fugitive_extras#comments#check()
   endif
 endfunction
