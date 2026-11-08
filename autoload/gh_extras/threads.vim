@@ -34,17 +34,13 @@ function! s:login(author) abort
   return type(a:author) == v:t_dict ? a:author.login : 'ghost'
 endfunction
 
-function! s:outdated(thread) abort
-  return a:thread.isOutdated || a:thread.line is v:null
-endfunction
-
 function! s:place(thread) abort
-  let l:outdated = s:outdated(a:thread)
-  let l:line = l:outdated ? a:thread.originalLine : a:thread.line
-  let l:start = l:outdated ? a:thread.originalStartLine : a:thread.startLine
+  let l:original = a:thread.isOutdated || (a:thread.line is v:null && !empty(a:thread.head))
+  let l:line = l:original ? a:thread.originalLine : a:thread.line
+  let l:start = l:original ? a:thread.originalStartLine : a:thread.startLine
   " line is null for a comment on the whole file
   return {
-        \ 'commit': l:outdated ? a:thread.comments.nodes[0].originalCommit.oid : a:thread.head,
+        \ 'commit': l:original ? a:thread.comments.nodes[0].originalCommit.oid : a:thread.head,
         \ 'line': l:line is v:null ? 1 : l:line,
         \ 'range': l:line is v:null ? '' : (l:start is v:null ? '' : l:start . '-') . l:line,
         \ }
@@ -331,7 +327,7 @@ function! gh_extras#threads#reply_draft(text) abort
   call roumail_draft#open('gh-extras://reply/' . l:target.thread.pr . '/' . l:target.label,
         \ empty(l:text) ? [] : [l:text],
         \ function('s:post', [bufnr(''), b:gh_extras_worktree, l:id]),
-        \ {'split': 'aboveleft 10new',
+        \ {'split': 'aboveleft 10new | resize 10',
         \  'saved': 'Reply saved: closing posts it',
         \  'empty': 'Reply empty: closing posts nothing'})
   setlocal filetype=markdown
