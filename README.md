@@ -1,8 +1,11 @@
 # gh-extras
 
-GitHub pull requests from Vim, through [gh](https://cli.github.com): list and
-check out open PRs, look back through merged ones, read and answer review
-threads, and post review comments as a pending review.
+GitHub pull requests from Vim, through [gh](https://cli.github.com):
+
+- List and check out open PRs
+- Look back through merged PRs
+- Read and answer review threads
+- Post review comments as a pending review
 
 **Vim or Neovim:** tested on Vim 9.1 and newer. It's plain Vimscript, so it may
 work on Neovim, but that's untested.
@@ -19,25 +22,22 @@ Plug 'vimoured/vim-lists'
 Plug 'vimoured/gh-extras'
 ```
 
-Optional, each for the commands it adds:
+Optional features:
 
-| Also needs | Adds |
-| --- | --- |
-| [vim-draft](https://github.com/vimoured/vim-draft) | `:ReplyDraft` |
-| [fugitive-extras](https://github.com/vimoured/fugitive-extras) + [vim-place](https://github.com/vimoured/vim-place) | `:CommentsSubmit`, and a warning about unsaved comments when checking out a PR |
-| fugitive-extras + vim-place + [vim-review](https://github.com/vimoured/vim-review) | Submitting a review saved earlier (`:CommentsLoad`, then `:CommentsSubmit`) |
+| Feature | What you get | Also needs |
+| --- | --- | --- |
+| Draft replies | `:ReplyDraft` | [vim-draft](https://github.com/vimoured/vim-draft) |
+| Review comments | `:CommentsSubmit`, and a warning about unsaved comments when checking out a PR | [fugitive-extras](https://github.com/vimoured/fugitive-extras), [vim-place](https://github.com/vimoured/vim-place) |
+| Saved reviews | Submit a review saved earlier (`:CommentsLoad`, then `:CommentsSubmit`) | fugitive-extras, vim-place, [vim-review](https://github.com/vimoured/vim-review) |
 
 ## Use
+
+### Pull requests
 
 | Command | What it does |
 | --- | --- |
 | `:PRs [count]` | Open pull requests, most recently updated first. |
 | `:MergedPRs [count]` | Merged pull requests, most recently merged first. |
-| `:Thread [number]` | Review threads on the branch's PR, or PR `number`. |
-| `:Threads` | Threads you're in across the repo's open PRs. |
-| `:Reply [text]` | In a thread list: reply to the thread under the cursor. |
-| `:ReplyDraft [text]` | In a thread list: write the reply in a draft; closing it posts it. |
-| `:CommentsSubmit [number]` | Post fugitive-extras' comments as one pending review of `HEAD`. |
 
 Keys in the PR lists:
 
@@ -48,6 +48,15 @@ Keys in the PR lists:
 | `o` | Open it in the browser. |
 | `/` | Filter as you type. |
 | `r` / `q` | Refresh / close. |
+
+### Review threads
+
+| Command | What it does |
+| --- | --- |
+| `:Thread [number]` | Review threads on the branch's PR, or PR `number`. |
+| `:Threads` | Threads you're in across the repo's open PRs. |
+| `:Reply [text]` | In a thread list: reply to the thread under the cursor. |
+| `:ReplyDraft [text]` | In a thread list: write the reply in a draft; closing it posts it. |
 
 Keys in the thread lists:
 
@@ -68,8 +77,30 @@ autocmd BufEnter gh-extras://thread* nmap <buffer> <leader>cc <Plug>(gh-extras-r
 autocmd BufEnter gh-extras://thread* nmap <buffer> <leader>cd <Plug>(gh-extras-reply-draft)
 ```
 
-To show readable names in the lists, point `g:gh_extras_pr_authors` at a file of
-`name:login` lines (default `~/.config/gh-pr-authors.txt`).
+### Review comments
+
+`:CommentsSubmit [number]` posts fugitive-extras' comments as one pending review
+of `HEAD`.
+
+## Configuration
+
+### Author names
+
+The PR lists show each author's GitHub login. To show a name instead, add it to
+`~/.config/gh-pr-authors.txt`, one `name:login` per line:
+
+```text
+Mira Dev: mira-d
+Sam Lee: sam
+# A line starting with # is skipped
+```
+
+Logins match in any case, and an author who isn't in the file keeps their login.
+To keep the file somewhere else:
+
+```vim
+let g:gh_extras_pr_authors = '~/notes/pr-authors.txt'
+```
 
 ## Tests
 
