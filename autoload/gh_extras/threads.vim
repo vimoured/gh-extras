@@ -200,7 +200,7 @@ function! s:open(worktree, kind, number) abort
         \   {'key': '<CR>', 'hint': 'file', 'call': function('s:goto')},
         \   {'key': ':Reply'},
         \   {'key': 'x', 'hint': 'resolve', 'call': function('s:toggle_resolved')},
-        \   {'key': 'u', 'hint': 'resolved', 'call': function('s:toggle_shown')},
+        \   {'key': 'R', 'hint': 'resolved', 'call': function('s:toggle_shown')},
         \   {'key': 'o', 'hint': 'browser', 'call': function('s:browse')}]}, {
         \ 'gh_extras_worktree': a:worktree,
         \ 'gh_extras_gitdir': FugitiveExtractGitDir(a:worktree),

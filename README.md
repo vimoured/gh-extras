@@ -81,7 +81,7 @@ Keys in the thread lists:
 | `<CR>` | Open the file at the thread's line. |
 | `=` | Open or close the conversation. |
 | `x` | Resolve or unresolve. |
-| `u` | Show or hide resolved threads. |
+| `R` | Show or hide resolved threads. |
 | `o` | Open the PR in the browser. |
 | `/` | Filter as you type. |
 | `r` / `q` | Refresh / close. |
