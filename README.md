@@ -37,7 +37,23 @@ Optional features:
 | Command | What it does |
 | --- | --- |
 | `:PRs [count]` | Open pull requests, most recently updated first. |
-| `:MergedPRs [count]` | Merged pull requests, most recently merged first. |
+| `:MergedPRs [terms]` | Merged pull requests, most recently merged first, that the terms find. |
+
+`:MergedPRs` sends its terms to GitHub's search, so they filter what's fetched,
+not only what's shown:
+
+- `@who`: by that author. `who` is a login, or a name from [the authors
+  file](#author-names), in any case: the whole name without its spaces
+  (`@miradev`), or a first name only one author there has (`@mira`).
+- `>2026-10-01`, `<2026-10-31` (also `>=`, `<=`): merged after or before that
+  date.
+- A number: how many to fetch (default 50, at most 100).
+- Anything else as typed: words to find in the PR, `"a phrase"`, or
+  any of GitHub's own qualifiers (`label:bug`, `base:main`, `-author:bot`).
+
+```vim
+:MergedPRs @mira >2026-10-01 login
+```
 
 Keys in the PR lists:
 
@@ -96,6 +112,7 @@ Sam Lee: sam
 ```
 
 Logins match in any case, and an author who isn't in the file keeps their login.
+`:MergedPRs @who` finds authors by these names too.
 To keep the file somewhere else:
 
 ```vim
