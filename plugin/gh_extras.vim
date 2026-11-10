@@ -1,6 +1,7 @@
 if executable('gh')
-  " Open PRs (default 20), latest first; <CR> checks one out
-  command! -nargs=? PRs call gh_extras#prs#open(<q-args>, 0)
+  " Open PRs (default 20) the search terms find (as :MergedPRs, >date is the
+  " updated date), latest updated first; <CR> checks one out
+  command! -nargs=* PRs call gh_extras#prs#open(<q-args>, 0)
   " Merged PRs (default 50) the search terms find (@who, >date, words; a number
   " is the count), latest merged first; <CR> shows the merge commit
   command! -nargs=* MergedPRs call gh_extras#prs#open(<q-args>, 1)

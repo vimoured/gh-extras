@@ -1,16 +1,22 @@
-let s:open_query = 'query($owner: String!, $name: String!, $count: Int!) {'
-      \ . ' repository(owner: $owner, name: $name) {'
-      \ . ' pullRequests(states: OPEN, first: $count,'
-      \ . ' orderBy: {field: UPDATED_AT, direction: DESC}) {'
-      \ . ' nodes { number title headRefName author { login }'
-      \ . ' isDraft updatedAt reviewDecision } } } }'
-" Merged PRs are searched for, so the search terms filter them. GitHub can't
-" order by merge time; updated time is close, and the fetched PRs are sorted
-" by mergedAt
-let s:merged_query = 'query($search: String!, $count: Int!) {'
-      \ . ' search(query: $search, type: ISSUE, first: $count) {'
-      \ . ' nodes { ... on PullRequest { number title headRefName author { login }'
-      \ . ' mergedAt mergeCommit { oid } } } } }'
+" Both lists are searched for, latest updated first, so the search terms
+" filter them. Per kind: what's searched for, what >date and <date qualify,
+" the default count, the fields fetched, and the time shown. GitHub can't
+" order a search by merge time; updated time is close, and merged PRs are
+" sorted by mergedAt once fetched
+let s:kinds = {
+      \ 'open': {'command': ':PRs', 'buffer': 'prs/', 'heading': 'Open PRs',
+      \   'is': 'is:open', 'date': 'updated:', 'count': 20,
+      \   'fields': 'isDraft updatedAt reviewDecision', 'at': 'updatedAt'},
+      \ 'merged': {'command': ':MergedPRs', 'buffer': 'merged-prs/', 'heading': 'Merged PRs',
+      \   'is': 'is:merged', 'date': 'merged:', 'count': 50,
+      \   'fields': 'mergedAt mergeCommit { oid }', 'at': 'mergedAt'}}
+
+function! s:query(kind) abort
+  return 'query($search: String!, $count: Int!) {'
+        \ . ' search(query: $search, type: ISSUE, first: $count) {'
+        \ . ' nodes { ... on PullRequest { number title headRefName author { login } '
+        \ . a:kind.fields . ' } } } }'
+endfunction
 
 let s:states = {'APPROVED': 'approved', 'CHANGES_REQUESTED': 'changes',
       \ 'REVIEW_REQUIRED': 'review'}
@@ -73,11 +79,11 @@ function! s:login(typed) abort
   return {'login': empty(l:found) ? a:typed[1:] : l:found[0][1]}
 endfunction
 
-" What :MergedPRs was given: a number is the count, @who is author:, >date
-" and <date are merged:, the rest (a "quoted phrase" one term) goes to
-" GitHub's search as typed. {'count', 'search', 'typed'}, or a string with an
-" error
-function! s:terms(args) abort
+" What :PRs or :MergedPRs was given: a number is the count, @who is author:,
+" >date and <date are the kind's date qualifier (updated: or merged:), the
+" rest (a "quoted phrase" one term) goes to GitHub's search as typed.
+" {'count', 'search', 'typed'}, or a string with an error
+function! s:terms(args, kind) abort
   let l:count = ''
   let l:search = []
   let l:typed = []
@@ -98,7 +104,7 @@ function! s:terms(args) abort
       if l:word !~# '^[<>]=\=\d\{4}-\d\d-\d\d$'
         return l:word . ': a date is YYYY-MM-DD'
       endif
-      call add(l:search, 'merged:' . l:word)
+      call add(l:search, a:kind.date . l:word)
     else
       call add(l:search, l:word)
     endif
@@ -108,26 +114,19 @@ function! s:terms(args) abort
 endfunction
 
 function! s:fetch() abort
-  if b:gh_extras_merged
-    " sort: so the count fetched are the latest, as by UPDATED_AT for :PRs
-    let l:args = '-F search=' . shellescape(trim('sort:updated-desc'
-          \ . ' repo:{owner}/{repo} is:pr is:merged ' . b:gh_extras_search))
-          \ . ' -f query=' . shellescape(s:merged_query)
-  else
-    let l:args = '-F owner={owner} -F name={repo} -f query=' . shellescape(s:open_query)
-  endif
+  let l:kind = b:gh_extras_kind
+  " sort: so the count fetched are the latest
+  let l:search = trim('sort:updated-desc repo:{owner}/{repo} is:pr ' . l:kind.is
+        \ . ' ' . b:gh_extras_search)
   let l:out = gh_extras#gh(b:gh_extras_worktree, 'api graphql -F count=' . b:gh_extras_count
-        \ . ' ' . l:args)
+        \ . ' -F search=' . shellescape(l:search) . ' -f query=' . shellescape(s:query(l:kind)))
   if l:out is v:null
     return v:null
   endif
   " Parsed here, so jq isn't needed
-  let l:data = json_decode(l:out).data
+  let l:prs = json_decode(l:out).data.search.nodes
   if b:gh_extras_merged
-    let l:prs = l:data.search.nodes
     call sort(l:prs, {a, b -> a.mergedAt <# b.mergedAt ? 1 : a.mergedAt ># b.mergedAt ? -1 : 0})
-  else
-    let l:prs = l:data.repository.pullRequests.nodes
   endif
   " login -> readable name; keyed lowercase: logins aren't case-sensitive
   let l:names = {}
@@ -147,8 +146,7 @@ endfunction
 
 function! s:heading(prs) abort
   let l:merged = b:gh_extras_merged
-  return [(l:merged ? 'Merged PRs ' . b:gh_extras_typed : 'Open PRs')
-        \   ->trim() . ' (' . len(a:prs) . ')',
+  return [trim(b:gh_extras_kind.heading . ' ' . b:gh_extras_typed) . ' (' . len(a:prs) . ')',
         \ s:format(b:gh_extras_widths, '#', 'who', 'title', 'branch',
         \   l:merged ? 'commit' : 'state', l:merged ? 'merged' : 'age')]
 endfunction
@@ -159,23 +157,23 @@ function! s:rows(prs) abort
         \ '#' . pr.number, pr._who, pr.title, pr.headRefName,
         \ l:merged ? pr.mergeCommit.oid[:6] : pr.isDraft ? 'draft'
         \ : get(s:states, type(pr.reviewDecision) == v:t_string ? pr.reviewDecision : '', '-'),
-        \ gh_extras#age(l:merged ? pr.mergedAt : pr.updatedAt))]}})
+        \ gh_extras#age(pr[b:gh_extras_kind.at]))]}})
 endfunction
 
-" merged: the merged PRs (default 50) that args, search terms and a count,
-" find; else the open ones (default 20), args the count
+" The open PRs (default 20), or merged ones (default 50), that args, search
+" terms and a count, find
 function! gh_extras#prs#open(args, merged) abort
-  let l:worktree = gh_extras#github_worktree(a:merged ? ':MergedPRs' : ':PRs')
+  let l:kind = s:kinds[a:merged ? 'merged' : 'open']
+  let l:worktree = gh_extras#github_worktree(l:kind.command)
   if empty(l:worktree)
     return
   endif
-  let l:terms = a:merged ? s:terms(a:args) : {'count': a:args, 'search': '', 'typed': ''}
+  let l:terms = s:terms(a:args, l:kind)
   if type(l:terms) == v:t_string
     call gh_extras#error(l:terms)
     return
   endif
-  call roumail_lists#open('gh-extras://' . (a:merged ? 'merged-prs/' : 'prs/')
-        \ . fnamemodify(l:worktree, ':t'), {
+  call roumail_lists#open('gh-extras://' . l:kind.buffer . fnamemodify(l:worktree, ':t'), {
         \ 'fetch': function('s:fetch'), 'heading': function('s:heading'),
         \ 'rows': function('s:rows'), 'id': {pr -> pr.number},
         \ 'match': {pr -> pr._who . ' ' . pr.title . ' ' . pr.headRefName},
@@ -185,11 +183,12 @@ function! gh_extras#prs#open(args, merged) abort
         \   {'key': 'o', 'hint': 'browser', 'call': function('s:browse')}]}, {
         \ 'gh_extras_worktree': l:worktree,
         \ 'gh_extras_gitdir': FugitiveGitDir(),
+        \ 'gh_extras_kind': l:kind,
         \ 'gh_extras_merged': a:merged,
         \ 'gh_extras_search': l:terms.search,
         \ 'gh_extras_typed': l:terms.typed,
         "\ GitHub returns at most 100 at a time
-        \ 'gh_extras_count': min([100, empty(l:terms.count) ? (a:merged ? 50 : 20)
+        \ 'gh_extras_count': min([100, empty(l:terms.count) ? l:kind.count
         \   : str2nr(l:terms.count)]),
         \ })
 endfunction
